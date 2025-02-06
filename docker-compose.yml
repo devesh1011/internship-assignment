@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  fastapi:
+    build: ./orchestrator
+    ports:
+      - "8000:8000"
+    depends_on:
+      - sentiment
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes: 
+      - ./orchestrator:/app
+
+  sentiment:  # Renamed for clarity
+    build: ./services/sentiment
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes: # Optional: For development
+      - ./services/sentiment:/app
+
+  streamlit:  # Assuming app_ui.py is your Streamlit app
+    build: .  # Build from the current directory (where app_ui.py is)
+    ports:
+      - "8501:8501"
+    depends_on:
+      - fastapi
+    command: ["streamlit", "run", "app_ui.py"] # Run Streamlit
