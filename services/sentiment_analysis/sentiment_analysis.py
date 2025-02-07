@@ -9,10 +9,10 @@ load_dotenv()
 
 app = FastAPI()
 
-# Initialize the Groq LLM for sentiment analysis
+# Initializing the Groq LLM for sentiment analysis
 llm = ChatGroq(model_name="mixtral-8x7b-32768", temperature=0, api_key=os.environ.get("GROQ_API_KEY"))
 
-# Define the prompt template for sentiment analysis
+# prompt template for sentiment analysis
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a sentiment analysis assistant. Analyze the sentiment of the following text and respond with 'Positive', 'Negative', or 'Neutral'."),
     ("human", "{text}")
