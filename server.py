@@ -1,27 +1,23 @@
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from fastapi import FastAPI, HTTPException
+from langchain_groq import ChatGroq
 from pydantic import BaseModel
 import requests
 import json
 import os
 
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-
+# initialized the app
 app = FastAPI()
 
-
-class TaskResponse(BaseModel):
-    tasks: list[str]
-
-
+# groq llm
 llm = ChatGroq(
     model_name="mixtral-8x7b-32768",
     temperature=0,
     api_key=os.environ.get("GROQ_API_KEY"),
 )
 
-
+# system prompt
 prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -30,13 +26,8 @@ prompt = ChatPromptTemplate.from_messages(
 You are an assistant responsible for orchestrating containerized tasks based on user requests. Your goal is to parse high-level user requests and determine which containerized tasks should be executed, along with their correct order.
 
 Available Tasks:
-1. **Sentiment Analysis**: 
-   - Keywords: "sentiment", "analyze", "emotion", "tone"
-   - Container Name: "sentiment_analysis"
-
-2. **Text Summarization**: 
-   - Keywords: "summarize", "summary", "shorten", "condense"
-   - Container Name: "text_summarization"
+1. **Sentiment Analysis**: Keywords: "sentiment", "analyze", "emotion", "tone" ; Container Name: "sentiment_analysis"
+2. **Text Summarization**: Keywords: "summarize", "summary", "shorten", "condense" ; Container Name: "text_summarization"
 
 Instructions:
 - Parse the user's request carefully.
@@ -50,31 +41,32 @@ Instructions:
     ]
 )
 
-
+# llm decides which container to run
 def decide_tasks(request_text: str):
     chain = prompt | llm | StrOutputParser()
     response = chain.invoke({"request_text": request_text})
-    json_res = json.loads(response)
-    return json_res["tasks"]
+    return json.loads(response)["tasks"]
 
 
-class OrchestratorRequest(BaseModel):
+# pydantic model
+class UserRequest(BaseModel):
     request_text: str
 
 
+# post route
 @app.post("/orchestrate")
-def orchestrate(req: OrchestratorRequest):
+def orchestrate(req: UserRequest):
     tasks = decide_tasks(req.request_text)
     results = {}
 
     if "sentiment_analysis" in tasks:
         try:
             resp = requests.post(
-                "http://localhost:8001/analyze", json={"text": req.request_text}
+                "http://sentiment:8001/analyze", json={"text": req.request_text}
             )
             resp.raise_for_status()
             results["sentiment"] = resp.json()
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             raise HTTPException(
                 status_code=500, detail=f"Sentiment analysis service error: {str(e)}"
             )
@@ -82,11 +74,11 @@ def orchestrate(req: OrchestratorRequest):
     if "text_summarization" in tasks:
         try:
             resp = requests.post(
-                "http://localhost:8002/summarize", json={"text": req.request_text}
+                "http://summarize:8002/summarize", json={"text": req.request_text}
             )
             resp.raise_for_status()
             results["summary"] = resp.json()
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             raise HTTPException(
                 status_code=500, detail=f"Summarization service error: {str(e)}"
             )
@@ -96,6 +88,7 @@ def orchestrate(req: OrchestratorRequest):
     return results
 
 
+# run the server.py 
 if __name__ == "__main__":
     import uvicorn
 
