@@ -56,4 +56,4 @@ Text Summarization (port 8002)
 
 ## Architecture Diagram
 
-![architecture](architecture diagram.png)
+![Architecture Diagram](https://github.com/user-attachments/assets/ec5a9c4c-334b-41c9-a041-53d8ca89e11c)
